@@ -28,7 +28,13 @@ const config = new DocumentBuilder()
   .setTitle('Splitlite API')
   .setDescription('Expense splitting API')
   .setVersion('1.0')
-  .addBearerAuth()
+  .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      in: 'header',
+    },
+    'access-token',)
   .build();
 
 const document = SwaggerModule.createDocument(

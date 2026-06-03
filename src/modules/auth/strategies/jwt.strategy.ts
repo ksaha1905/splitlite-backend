@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(
 
       audience: 'authenticated',
 
-      algorithms: ['RS256'],
+      algorithms: ['ES256'],
 
       secretOrKeyProvider: jwksRsa.passportJwtSecret({
         cache: true,

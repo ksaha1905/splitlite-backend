@@ -3,7 +3,7 @@ import {
   Get,
   UseGuards,
 } from '@nestjs/common';
-
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -16,6 +16,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth('access-token')
   getMe(@CurrentUser() user: any) {
     return this.authService.getCurrentUser(
       user,
