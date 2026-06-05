@@ -4,13 +4,13 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import * as jwksRsa from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
-
+import { UsersService } from '../../users/users.service';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(
   Strategy,
   'jwt',
 ) {
-  constructor(configService: ConfigService) {
+  constructor(configService: ConfigService, private usersService: UsersService,) {
     const supabaseUrl =
       configService.get<string>('SUPABASE_URL');
 
@@ -34,11 +34,23 @@ export class JwtStrategy extends PassportStrategy(
     });
   }
 
-  async validate(payload: JwtPayload) {
-    return {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role,
-    };
+ async validate(payload: JwtPayload) {
+  const supabaseId = payload.sub;
+  const email = payload.email;
+
+  let user =
+    await this.usersService.findBySupabaseId(
+      supabaseId,
+    );
+
+  if (!user) {
+    user =
+      await this.usersService.createUser({
+        supabaseId,
+        email: email!,
+      });
   }
+
+  return user;
+}
 }
