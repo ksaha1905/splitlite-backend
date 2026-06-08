@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Patch, Param, UseGuards } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -27,4 +27,13 @@ getMyGroups(
     user.id,
   );
 }
+
+@Patch(':id/invite-code')
+generateInviteCode(
+  @Param('id') groupId: string,
+) {
+  return this.groupsService
+    .generateInviteCode(groupId);
+}
+
 }

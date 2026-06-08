@@ -81,4 +81,37 @@ async getMyGroups(
   });
 }
 
+async generateInviteCode(
+  groupId: string,
+) {
+  const group =
+    await this.prisma.group.findUnique({
+      where: {
+        id: groupId,
+      },
+    });
+
+  if (!group) {
+    throw new NotFoundException(
+      'Group not found',
+    );
+  }
+
+  const inviteCode =
+    Math.random()
+      .toString(36)
+      .substring(2, 8)
+      .toUpperCase();
+
+  return this.prisma.group.update({
+    where: {
+      id: groupId,
+    },
+
+    data: {
+      inviteCode,
+    },
+  });
+}
+
 }
