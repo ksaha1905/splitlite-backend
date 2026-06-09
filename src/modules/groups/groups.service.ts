@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -10,6 +11,25 @@ import { JoinGroupDto } from './dto/join-group.dto';
 @Injectable()
 export class GroupsService {
   constructor(private prisma: PrismaService) {}
+
+  private async checkGroupOwnership(userId: string, groupId: string) {
+    const membership = await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId,
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+
+    if (membership.role !== 'OWNER') {
+      throw new ForbiddenException('Only owner can perform this action');
+    }
+  }
 
   async createGroup(userId: string, dto: CreateGroupDto) {
     return this.prisma.group.create({
@@ -76,7 +96,9 @@ export class GroupsService {
     });
   }
 
-  async generateInviteCode(groupId: string) {
+  async generateInviteCode(userId: string, groupId: string) {
+    await this.checkGroupOwnership(userId, groupId);
+
     const group = await this.prisma.group.findUnique({
       where: {
         id: groupId,

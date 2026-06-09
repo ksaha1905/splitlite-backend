@@ -34,8 +34,8 @@ export class GroupsController {
   }
 
   @Patch(':id/invite-code')
-  generateInviteCode(@Param('id') groupId: string) {
-    return this.groupsService.generateInviteCode(groupId);
+  generateInviteCode(@CurrentUser() user: any, @Param('id') groupId: string) {
+    return this.groupsService.generateInviteCode(user.id, groupId);
   }
 
   @Post('join')
