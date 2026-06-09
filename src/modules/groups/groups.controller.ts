@@ -48,4 +48,13 @@ joinGroup(
     dto,
   );
 }
+
+@Get(':id/members')
+getMembers(
+  @Param('id') groupId: string,
+) {
+  return this.groupsService.getMembers(
+    groupId,
+  );
+}
 }
