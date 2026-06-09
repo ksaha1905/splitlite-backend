@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { JoinGroupDto } from './dto/join-group.dto';
 
 @Injectable()
 export class GroupsService {
@@ -110,6 +111,48 @@ async generateInviteCode(
 
     data: {
       inviteCode,
+    },
+  });
+}
+
+async joinGroup(
+  userId: string,
+  dto: JoinGroupDto,
+) {
+  const group =
+    await this.prisma.group.findUnique({
+      where: {
+        inviteCode: dto.inviteCode,
+      },
+    });
+
+  if (!group) {
+    throw new NotFoundException(
+      'Invalid invite code',
+    );
+  }
+
+  const existingMembership =
+    await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId: group.id,
+        },
+      },
+    });
+
+  if (existingMembership) {
+    throw new ConflictException(
+      'Already a member',
+    );
+  }
+
+  return this.prisma.groupMember.create({
+    data: {
+      userId,
+      groupId: group.id,
+      role: 'MEMBER',
     },
   });
 }
