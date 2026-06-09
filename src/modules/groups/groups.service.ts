@@ -182,4 +182,51 @@ export class GroupsService {
       },
     });
   }
+
+  async leaveGroup(
+  userId: string,
+  groupId: string,
+) {
+  const membership =
+    await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new NotFoundException(
+      'You are not a member of this group',
+    );
+  }
+
+ if (membership.role === 'OWNER') {
+  await this.prisma.group.delete({
+    where: {
+      id: groupId,
+    },
+  });
+
+  return {
+    message:
+      'Group deleted successfully',
+  };
+}
+
+  await this.prisma.groupMember.delete({
+    where: {
+      userId_groupId: {
+        userId,
+        groupId,
+      },
+    },
+  });
+
+  return {
+    message: 'Left group successfully',
+  };
+}
 }

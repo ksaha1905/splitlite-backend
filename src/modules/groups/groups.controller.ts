@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
+  Delete
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -54,6 +55,17 @@ getMembers(
   @Param('id') groupId: string,
 ) {
   return this.groupsService.getMembers(
+    groupId,
+  );
+}
+
+@Delete(':id/leave')
+leaveGroup(
+  @CurrentUser() user: any,
+  @Param('id') groupId: string,
+) {
+  return this.groupsService.leaveGroup(
+    user.id,
     groupId,
   );
 }
