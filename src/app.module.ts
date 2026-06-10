@@ -4,6 +4,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { GroupsModule } from './modules/groups/groups.module';
     PrismaModule,
     AuthModule,
     UsersModule,
-    GroupsModule
+    GroupsModule,
+    ExpensesModule
   ],
   controllers: [],
   providers: [],
