@@ -12,50 +12,94 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  supabaseId     String   @unique
-  email          String   @unique
-  name           String?
-  avatarUrl      String?
+  id         String  @id @default(uuid())
+  supabaseId String  @unique
+  email      String  @unique
+  name       String?
+  avatarUrl  String?
 
-  memberships    GroupMember[]
-  createdGroups  Group[]
+  memberships   GroupMember[]
+  createdGroups Group[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  paidExpenses        Expense[]            @relation("PaidExpenses")
+  expenseParticipants ExpenseParticipant[] @relation("ExpenseParticipants")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Group {
-  id            String   @id @default(uuid())
-  name          String
-  inviteCode    String?  @unique
+  id         String  @id @default(uuid())
+  name       String
+  inviteCode String? @unique
 
-  createdById   String
-  createdBy     User @relation(fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
-  members       GroupMember[]
+  members  GroupMember[]
+  expenses Expense[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model GroupMember {
-  id         String @id @default(uuid())
+  id String @id @default(uuid())
 
-  userId     String
-  groupId    String
+  userId  String
+  groupId String
 
-  role       GroupRole @default(MEMBER)
+  role GroupRole @default(MEMBER)
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group      Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  joinedAt   DateTime @default(now())
+  joinedAt DateTime @default(now())
 
   @@unique([userId, groupId])
+}
+
+model Expense {
+  id String @id @default(uuid())
+
+  title  String
+  amount Decimal @db.Decimal(10, 2)
+
+  splitType SplitType
+
+  groupId  String
+  paidById String
+
+  group  Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy User  @relation("PaidExpenses", fields: [paidById], references: [id])
+
+  participants ExpenseParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseParticipant {
+  id String @id @default(uuid())
+
+  expenseId String
+  userId    String
+
+  amountOwed Decimal @db.Decimal(10, 2)
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  user User @relation("ExpenseParticipants", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
 }
 
 enum GroupRole {
   OWNER
   MEMBER
+}
+
+enum SplitType {
+  EQUAL
+  EXACT
 }
