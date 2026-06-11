@@ -92,40 +92,50 @@ export class ExpensesService {
     dto.amount /
     dto.participantIds.length;
 
-  return this.prisma.expense.create({
-  data: {
-    title: dto.title,
-    amount: dto.amount,
-    splitType: dto.splitType,
-    groupId: dto.groupId,
-    paidById: userId,
+  return this.prisma.$transaction(
+    async (tx) => {
+      const expense =
+        await tx.expense.create({
+          data: {
+            title: dto.title,
+            amount: dto.amount,
+            splitType: dto.splitType,
+            groupId: dto.groupId,
+            paidById: userId,
 
-    participants: {
-      create: dto.participantIds.map(
-        (participantId) => ({
-          userId: participantId,
-          amountOwed: splitAmount,
-        }),
-      ),
+            participants: {
+              create:
+                dto.participantIds.map(
+                  (participantId) => ({
+                    userId:
+                      participantId,
+                    amountOwed:
+                      splitAmount,
+                  }),
+                ),
+            },
+          },
+
+          select: {
+            id: true,
+            title: true,
+            amount: true,
+            splitType: true,
+            groupId: true,
+            paidById: true,
+            createdAt: true,
+
+            participants: {
+              select: {
+                userId: true,
+                amountOwed: true,
+              },
+            },
+          },
+        });
+
+      return expense;
     },
-  },
-
-  select: {
-    id: true,
-    title: true,
-    amount: true,
-    splitType: true,
-    groupId: true,
-    paidById: true,
-    createdAt: true,
-
-    participants: {
-      select: {
-        userId: true,
-        amountOwed: true,
-      },
-    },
-  },
-});
+  );
 }
 }
