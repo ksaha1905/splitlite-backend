@@ -4,15 +4,12 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  IsUUID,
-  Min,
-  ArrayMinSize,
+  ValidateNested,
 } from 'class-validator';
 
-export enum SplitType {
-  EQUAL = 'EQUAL',
-  EXACT = 'EXACT',
-}
+import { Type } from 'class-transformer';
+import { SplitType } from '@prisma/client';
+import { ParticipantDto } from './participant.dto';
 
 export class CreateExpenseDto {
   @IsString()
@@ -20,17 +17,16 @@ export class CreateExpenseDto {
   title!: string;
 
   @IsNumber()
-  @Min(1)
   amount!: number;
-
-  @IsUUID()
-  groupId!: string;
 
   @IsEnum(SplitType)
   splitType!: SplitType;
 
+  @IsString()
+  groupId!: string;
+
   @IsArray()
-  @ArrayMinSize(1)
-  @IsUUID('4', { each: true })
-  participantIds!: string[];
+  @ValidateNested({ each: true })
+  @Type(() => ParticipantDto)
+  participants!: ParticipantDto[];
 }

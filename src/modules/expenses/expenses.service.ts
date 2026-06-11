@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateExpenseDto } from './dto/create-expense.dto';
 import {
+  Injectable,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateExpenseDto } from './dto/create-expense.dto';
 
 @Injectable()
 export class ExpensesService {
@@ -13,129 +14,183 @@ export class ExpensesService {
   ) {}
 
   private async validateExpenseCreation(
-  userId: string,
-  dto: CreateExpenseDto,
-) {
-  const membership =
-    await this.prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: {
-          userId,
-          groupId: dto.groupId,
-        },
-      },
-    });
-
-  if (!membership) {
-    throw new ForbiddenException(
-      'You are not a member of this group',
-    );
-  }
-
-  const uniqueParticipantIds =
-    [...new Set(dto.participantIds)];
-
-  if (
-    uniqueParticipantIds.length !==
-    dto.participantIds.length
+    userId: string,
+    dto: CreateExpenseDto,
   ) {
-    throw new BadRequestException(
-      'Duplicate participants are not allowed',
-    );
-  }
-
-  const groupMembers =
-    await this.prisma.groupMember.findMany({
-      where: {
-        groupId: dto.groupId,
-      },
-
-      select: {
-        userId: true,
-      },
-    });
-
-  const memberIds =
-    groupMembers.map(
-      (member) => member.userId,
-    );
-
-  const invalidParticipants =
-    dto.participantIds.filter(
-      (participantId) =>
-        !memberIds.includes(participantId),
-    );
-
-  if (invalidParticipants.length > 0) {
-    throw new BadRequestException(
-      'Some participants are not group members',
-    );
-  }
-
-  if (dto.splitType !== 'EQUAL') {
-    throw new BadRequestException(
-      'Only equal split supported currently',
-    );
-  }
-}
-
- async createExpense(
-  userId: string,
-  dto: CreateExpenseDto,
-) {
-  await this.validateExpenseCreation(
-    userId,
-    dto,
-  );
-
-  const splitAmount =
-    dto.amount /
-    dto.participantIds.length;
-
-  return this.prisma.$transaction(
-    async (tx) => {
-      const expense =
-        await tx.expense.create({
-          data: {
-            title: dto.title,
-            amount: dto.amount,
-            splitType: dto.splitType,
-            groupId: dto.groupId,
-            paidById: userId,
-
-            participants: {
-              create:
-                dto.participantIds.map(
-                  (participantId) => ({
-                    userId:
-                      participantId,
-                    amountOwed:
-                      splitAmount,
-                  }),
-                ),
+    const membership =
+      await this.prisma.groupMember.findUnique(
+        {
+          where: {
+            userId_groupId: {
+              userId,
+              groupId: dto.groupId,
             },
+          },
+        },
+      );
+
+    if (!membership) {
+      throw new ForbiddenException(
+        'You are not a member of this group',
+      );
+    }
+
+    const participantIds =
+      dto.participants.map(
+        (participant) =>
+          participant.userId,
+      );
+
+    const uniqueParticipantIds =
+      [...new Set(participantIds)];
+
+    if (
+      uniqueParticipantIds.length !==
+      participantIds.length
+    ) {
+      throw new BadRequestException(
+        'Duplicate participants are not allowed',
+      );
+    }
+
+    const groupMembers =
+      await this.prisma.groupMember.findMany(
+        {
+          where: {
+            groupId: dto.groupId,
           },
 
           select: {
-            id: true,
-            title: true,
-            amount: true,
-            splitType: true,
-            groupId: true,
-            paidById: true,
-            createdAt: true,
+            userId: true,
+          },
+        },
+      );
 
-            participants: {
-              select: {
-                userId: true,
-                amountOwed: true,
-              },
+    const memberIds =
+      groupMembers.map(
+        (member) => member.userId,
+      );
+
+    const invalidParticipants =
+      participantIds.filter(
+        (participantId) =>
+          !memberIds.includes(
+            participantId,
+          ),
+      );
+
+    if (
+      invalidParticipants.length > 0
+    ) {
+      throw new BadRequestException(
+        'Some participants are not group members',
+      );
+    }
+
+    if (
+      dto.splitType !== 'EQUAL' &&
+      dto.splitType !== 'EXACT'
+    ) {
+      throw new BadRequestException(
+        'Invalid split type',
+      );
+    }
+
+    if (
+      dto.splitType === 'EXACT'
+    ) {
+      const total =
+        dto.participants.reduce(
+          (sum, participant) =>
+            sum +
+            participant.amountOwed!,
+          0,
+        );
+
+      if (total !== dto.amount) {
+        throw new BadRequestException(
+          'Participant amounts must equal total expense',
+        );
+      }
+    }
+  }
+
+  async createExpense(
+    userId: string,
+    dto: CreateExpenseDto,
+  ) {
+    await this.validateExpenseCreation(
+      userId,
+      dto,
+    );
+
+    const participantData =
+  dto.splitType === 'EQUAL'
+    ? dto.participants.map(
+        (participant) => ({
+          amountOwed:
+            dto.amount /
+            dto.participants
+              .length,
+
+          user: {
+            connect: {
+              id: participant.userId,
             },
           },
-        });
+        }),
+      )
+    : dto.participants.map(
+        (participant) => ({
+          amountOwed:
+            participant.amountOwed!,
 
-      return expense;
-    },
-  );
-}
+          user: {
+            connect: {
+              id: participant.userId,
+            },
+          },
+        }),
+      );
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        const expense =
+          await tx.expense.create({
+            data: {
+              title: dto.title,
+              amount: dto.amount,
+              splitType:
+                dto.splitType,
+              groupId:
+                dto.groupId,
+              paidById: userId,
+
+              participants: {
+                create: participantData,
+              },
+            },
+
+            select: {
+              id: true,
+              title: true,
+              amount: true,
+              splitType: true,
+              groupId: true,
+              paidById: true,
+              createdAt: true,
+
+              participants: {
+                select: {
+                  userId: true,
+                  amountOwed: true,
+                },
+              },
+            },
+          });
+
+        return expense;
+      },
+    );
+  }
 }
