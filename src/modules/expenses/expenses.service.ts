@@ -6,6 +6,7 @@ import {
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { GetExpensesQueryDto } from './dto/get-expenses-query.dto';
 
 @Injectable()
 export class ExpensesService {
@@ -159,6 +160,7 @@ export class ExpensesService {
   async getGroupExpenses(
   userId: string,
   groupId: string,
+  query: GetExpensesQueryDto
 ) {
   const membership =
     await this.prisma.groupMember.findUnique({
@@ -177,31 +179,71 @@ export class ExpensesService {
   }
 
   const expenses =
-    await this.prisma.expense.findMany({
-      where: {
-        groupId,
-      },
+  await this.prisma.expense.findMany({
+    where: {
+      groupId,
 
-      orderBy: {
-        createdAt: 'desc',
-      },
+      ...(query.paidById && {
+        paidById: query.paidById,
+      }),
 
-      select: {
-        id: true,
-        title: true,
-        amount: true,
-        splitType: true,
-        createdAt: true,
+      ...(query.splitType && {
+        splitType: query.splitType,
+      }),
 
-        paidBy: {
-          select: {
-            id: true,
-            name: true,
-          },
+      ...(query.search && {
+        title: {
+          contains: query.search,
+          mode: 'insensitive',
+        },
+      }),
+
+      ...((query.from || query.to) && {
+        createdAt: {
+          ...(query.from && {
+            gte: new Date(query.from),
+          }),
+
+          ...(query.to && {
+            lte: new Date(query.to),
+          }),
+        },
+      }),
+
+      ...((query.minAmount ||
+        query.maxAmount) && {
+        amount: {
+          ...(query.minAmount && {
+            gte: Number(query.minAmount),
+          }),
+
+          ...(query.maxAmount && {
+            lte: Number(query.maxAmount),
+          }),
+        },
+      }),
+    },
+
+    orderBy: {
+      createdAt: 'desc',
+    },
+
+    select: {
+      id: true,
+      title: true,
+      amount: true,
+      splitType: true,
+      createdAt: true,
+
+      paidBy: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-    });
+    },
+  });
 
-  return expenses;
+return expenses;
 }
 }
