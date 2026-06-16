@@ -115,6 +115,38 @@ export class ExpensesService {
     }
   }
 
+  private calculateEqualSplit(
+  totalAmount: number,
+  participantCount: number,
+) {
+  const totalInPaise =
+    Math.round(totalAmount * 100);
+
+  const baseShare =
+    Math.floor(
+      totalInPaise /
+        participantCount,
+    );
+
+  const remainder =
+    totalInPaise %
+    participantCount;
+
+  return Array.from(
+    {
+      length:
+        participantCount,
+    },
+    (_, index) =>
+      (
+        baseShare +
+        (index < remainder
+          ? 1
+          : 0)
+      ) / 100,
+  );
+}
+
   async createExpense(
     userId: string,
     dto: CreateExpenseDto,
@@ -124,18 +156,32 @@ export class ExpensesService {
       dto,
     );
 
-    const participantData =
+    const equalSplits =
+  dto.splitType ===
+  'EQUAL'
+    ? this.calculateEqualSplit(
+        dto.amount,
+        dto.participants
+          .length,
+      )
+    : [];
+
+const participantData =
   dto.splitType === 'EQUAL'
     ? dto.participants.map(
-        (participant) => ({
+        (
+          participant,
+          index,
+        ) => ({
           amountOwed:
-            dto.amount /
-            dto.participants
-              .length,
+            equalSplits[
+              index
+            ],
 
           user: {
             connect: {
-              id: participant.userId,
+              id:
+                participant.userId,
             },
           },
         }),
