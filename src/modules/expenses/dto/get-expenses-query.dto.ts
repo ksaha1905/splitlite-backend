@@ -3,11 +3,24 @@ import {
   IsOptional,
   IsString,
   IsNumberString,
+  Min
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { SplitType } from '@prisma/client';
 
 export class GetExpensesQueryDto {
+
+@IsOptional()
+@Type(() => Number)
+@Min(1)
+page?: number = 1;
+
+@IsOptional()
+@Type(() => Number)
+@Min(1)
+limit?: number = 10;
+
   @IsOptional()
   @IsString()
   paidById?: string;

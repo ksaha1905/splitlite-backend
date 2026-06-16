@@ -157,10 +157,10 @@ export class ExpensesService {
     });
   }
 
-  async getGroupExpenses(
+async getGroupExpenses(
   userId: string,
   groupId: string,
-  query: GetExpensesQueryDto
+  query: GetExpensesQueryDto,
 ) {
   const membership =
     await this.prisma.groupMember.findUnique({
@@ -178,72 +178,97 @@ export class ExpensesService {
     );
   }
 
-  const expenses =
-  await this.prisma.expense.findMany({
-    where: {
-      groupId,
+  const page = query.page || 1;
+  const limit = query.limit || 10;
 
-      ...(query.paidById && {
-        paidById: query.paidById,
-      }),
+  const skip = (page - 1) * limit;
 
-      ...(query.splitType && {
-        splitType: query.splitType,
-      }),
+  const whereClause = {
+    groupId,
 
-      ...(query.search && {
-        title: {
-          contains: query.search,
-          mode: 'insensitive',
+    ...(query.paidById && {
+      paidById: query.paidById,
+    }),
+
+    ...(query.splitType && {
+      splitType: query.splitType,
+    }),
+
+    ...(query.search && {
+      title: {
+        contains: query.search,
+        mode: 'insensitive' as const,
+      },
+    }),
+
+    ...((query.from || query.to) && {
+      createdAt: {
+        ...(query.from && {
+          gte: new Date(query.from),
+        }),
+
+        ...(query.to && {
+          lte: new Date(query.to),
+        }),
+      },
+    }),
+
+    ...((query.minAmount ||
+      query.maxAmount) && {
+      amount: {
+        ...(query.minAmount && {
+          gte: Number(query.minAmount),
+        }),
+
+        ...(query.maxAmount && {
+          lte: Number(query.maxAmount),
+        }),
+      },
+    }),
+  };
+
+  const [expenses, total] =
+    await this.prisma.$transaction([
+      this.prisma.expense.findMany({
+        where: whereClause,
+
+        skip,
+        take: limit,
+
+        orderBy: {
+          createdAt: 'desc',
         },
-      }),
 
-      ...((query.from || query.to) && {
-        createdAt: {
-          ...(query.from && {
-            gte: new Date(query.from),
-          }),
-
-          ...(query.to && {
-            lte: new Date(query.to),
-          }),
-        },
-      }),
-
-      ...((query.minAmount ||
-        query.maxAmount) && {
-        amount: {
-          ...(query.minAmount && {
-            gte: Number(query.minAmount),
-          }),
-
-          ...(query.maxAmount && {
-            lte: Number(query.maxAmount),
-          }),
-        },
-      }),
-    },
-
-    orderBy: {
-      createdAt: 'desc',
-    },
-
-    select: {
-      id: true,
-      title: true,
-      amount: true,
-      splitType: true,
-      createdAt: true,
-
-      paidBy: {
         select: {
           id: true,
-          name: true,
-        },
-      },
-    },
-  });
+          title: true,
+          amount: true,
+          splitType: true,
+          createdAt: true,
 
-return expenses;
+          paidBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.expense.count({
+        where: whereClause,
+      }),
+    ]);
+
+  return {
+    data: expenses,
+
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 }
 }
