@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Post,
+  Get,
+  Param,
   UseGuards,
 } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
@@ -26,4 +28,15 @@ export class ExpensesController {
       dto,
     );
   }
+
+  @Get('/group/:groupId')
+getGroupExpenses(
+  @CurrentUser() user: any,
+  @Param('groupId') groupId: string,
+) {
+  return this.expensesService.getGroupExpenses(
+    user.id,
+    groupId,
+  );
+}
 }

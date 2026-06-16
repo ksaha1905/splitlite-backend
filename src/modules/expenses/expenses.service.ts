@@ -155,4 +155,53 @@ export class ExpensesService {
       return expense;
     });
   }
+
+  async getGroupExpenses(
+  userId: string,
+  groupId: string,
+) {
+  const membership =
+    await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new ForbiddenException(
+      'You are not a member of this group',
+    );
+  }
+
+  const expenses =
+    await this.prisma.expense.findMany({
+      where: {
+        groupId,
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      select: {
+        id: true,
+        title: true,
+        amount: true,
+        splitType: true,
+        createdAt: true,
+
+        paidBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+  return expenses;
+}
 }
