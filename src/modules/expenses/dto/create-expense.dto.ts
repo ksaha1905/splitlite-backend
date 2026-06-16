@@ -25,6 +25,9 @@ export class CreateExpenseDto {
   @IsString()
   groupId!: string;
 
+  @IsString()
+  paidById!: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ParticipantDto)
