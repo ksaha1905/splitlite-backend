@@ -490,4 +490,24 @@ async updateExpense(
     },
   );
 }
+
+async deleteExpense(
+  userId: string,
+  expenseId: string,
+) {
+  await this.validateExpenseEditPermission(
+    userId,
+    expenseId,
+  );
+
+  await this.prisma.expense.delete({
+    where: {
+      id: expenseId,
+    },
+  });
+
+  return {
+    message: 'Expense deleted successfully',
+  };
+}
 }

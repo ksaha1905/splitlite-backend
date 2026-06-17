@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Query,
   Patch,
@@ -67,6 +68,17 @@ updateExpense(
     user.id,
     expenseId,
     dto,
+  );
+}
+
+@Delete(':expenseId')
+deleteExpense(
+  @CurrentUser() user: any,
+  @Param('expenseId') expenseId: string,
+) {
+  return this.expensesService.deleteExpense(
+    user.id,
+    expenseId,
   );
 }
 }
