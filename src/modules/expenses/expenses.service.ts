@@ -14,6 +14,38 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
+  private buildParticipantData(dto: CreateExpenseDto) {
+  const equalSplits =
+    dto.splitType === 'EQUAL'
+      ? this.calculateEqualSplit(
+          dto.amount,
+          dto.participants.length,
+        )
+      : [];
+
+  return dto.splitType === 'EQUAL'
+    ? dto.participants.map(
+        (participant, index) => ({
+          amountOwed: equalSplits[index],
+          user: {
+            connect: {
+              id: participant.userId,
+            },
+          },
+        }),
+      )
+    : dto.participants.map(
+        (participant) => ({
+          amountOwed: participant.amountOwed!,
+          user: {
+            connect: {
+              id: participant.userId,
+            },
+          },
+        }),
+      );
+}
+
   private async validateExpenseCreation(userId: string, dto: CreateExpenseDto) {
     const membership = await this.prisma.groupMember.findUnique({
       where: {
@@ -71,7 +103,7 @@ export class ExpensesService {
         0,
       );
 
-      if (total !== dto.amount) {
+      if (Math.abs(total - dto.amount) > 0.01) {
         throw new BadRequestException(
           'Participant amounts must equal total expense',
         );
@@ -148,31 +180,9 @@ export class ExpensesService {
   async createExpense(userId: string, dto: CreateExpenseDto) {
     await this.validateExpenseCreation(userId, dto);
 
-    const equalSplits =
-      dto.splitType === 'EQUAL'
-        ? this.calculateEqualSplit(dto.amount, dto.participants.length)
-        : [];
 
     const participantData =
-      dto.splitType === 'EQUAL'
-        ? dto.participants.map((participant, index) => ({
-            amountOwed: equalSplits[index],
-
-            user: {
-              connect: {
-                id: participant.userId,
-              },
-            },
-          }))
-        : dto.participants.map((participant) => ({
-            amountOwed: participant.amountOwed!,
-
-            user: {
-              connect: {
-                id: participant.userId,
-              },
-            },
-          }));
+       this.buildParticipantData(dto);
 
     return this.prisma.$transaction(async (tx) => {
       const expense = await tx.expense.create({
@@ -411,40 +421,10 @@ async updateExpense(
     dto,
   );
 
-  const equalSplits =
-    dto.splitType === 'EQUAL'
-      ? this.calculateEqualSplit(
-          dto.amount,
-          dto.participants.length,
-        )
-      : [];
+ 
 
   const participantData =
-    dto.splitType === 'EQUAL'
-      ? dto.participants.map(
-          (participant, index) => ({
-            amountOwed:
-              equalSplits[index],
-
-            user: {
-              connect: {
-                id: participant.userId,
-              },
-            },
-          }),
-        )
-      : dto.participants.map(
-          (participant) => ({
-            amountOwed:
-              participant.amountOwed!,
-
-            user: {
-              connect: {
-                id: participant.userId,
-              },
-            },
-          }),
-        );
+     this.buildParticipantData(dto);
 
   return this.prisma.$transaction(
     async (tx) => {
