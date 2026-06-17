@@ -1,6 +1,7 @@
 import {
   Injectable,
   ForbiddenException,
+  NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 
@@ -270,5 +271,76 @@ async getGroupExpenses(
       totalPages: Math.ceil(total / limit),
     },
   };
+}
+
+async getExpenseDetails(
+  userId: string,
+  expenseId: string,
+) {
+  const expense =
+    await this.prisma.expense.findUnique({
+      where: {
+        id: expenseId,
+      },
+
+      select: {
+        id: true,
+        title: true,
+        amount: true,
+        splitType: true,
+        createdAt: true,
+        updatedAt: true,
+
+        groupId: true,
+
+        paidBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+
+        participants: {
+          select: {
+            amountOwed: true,
+
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+  if (!expense) {
+    throw new NotFoundException(
+      'Expense not found',
+    );
+  }
+
+  const membership =
+    await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId: expense.groupId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new ForbiddenException(
+      'You are not a member of this group',
+    );
+  }
+
+  const { groupId, ...response } = expense;
+
+return response;
 }
 }

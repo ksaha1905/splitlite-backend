@@ -43,4 +43,15 @@ getGroupExpenses(
     query,
   );
 }
+
+@Get(':expenseId')
+getExpenseDetails(
+  @CurrentUser() user: any,
+  @Param('expenseId') expenseId: string,
+) {
+  return this.expensesService.getExpenseDetails(
+    user.id,
+    expenseId,
+  );
+}
 }
