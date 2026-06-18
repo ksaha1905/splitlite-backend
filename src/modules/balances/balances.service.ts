@@ -52,6 +52,42 @@ private async getGroupExpenseData(
     },
   });
 }
+
+private calculateBalances(expenses: any[]) {
+  const balances = new Map<string, number>();
+
+  for (const expense of expenses) {
+    const amount = Number(expense.amount);
+
+    balances.set(
+      expense.paidById,
+      (balances.get(expense.paidById) || 0) +
+        amount,
+    );
+
+    for (const participant of expense.participants) {
+      const owed = Number(
+        participant.amountOwed,
+      );
+
+      balances.set(
+        participant.userId,
+        (balances.get(participant.userId) ||
+          0) - owed,
+      );
+    }
+  }
+
+  return new Map(
+  [...balances.entries()].map(
+    ([userId, balance]) => [
+      userId,
+      Number(balance.toFixed(2)),
+    ],
+  ),
+);
+}
+
   async getBalances(
   userId: string,
   groupId: string,
@@ -66,7 +102,12 @@ private async getGroupExpenseData(
       groupId,
     );
 
-  return expenses;
+  const balances =
+    this.calculateBalances(expenses);
+
+  return Object.fromEntries(
+    balances,
+  );
 }
 
   async getGroupSummary(userId: string, groupId: string) {
