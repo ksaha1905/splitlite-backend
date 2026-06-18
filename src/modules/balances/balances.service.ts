@@ -106,6 +106,7 @@ private async getGroupMembers(
     },
   });
 }
+
   async getBalances(
   userId: string,
   groupId: string,
@@ -142,10 +143,43 @@ private async getGroupMembers(
     userId,
     groupId,
   );
-    return {
-      message: 'summary endpoint',
-      groupId,
-    };
+     const [
+    expenseAggregate,
+    expenseCount,
+    memberCount,
+  ] = await this.prisma.$transaction([
+    this.prisma.expense.aggregate({
+      where: {
+        groupId,
+      },
+
+      _sum: {
+        amount: true,
+      },
+    }),
+
+    this.prisma.expense.count({
+      where: {
+        groupId,
+      },
+    }),
+
+    this.prisma.groupMember.count({
+      where: {
+        groupId,
+      },
+    }),
+  ]);
+
+  return {
+    totalExpenses: Number(
+      expenseAggregate._sum.amount ?? 0,
+    ),
+
+    expenseCount,
+
+    memberCount,
+  };
   }
 
   async getSimplifiedBalances(userId: string, 
