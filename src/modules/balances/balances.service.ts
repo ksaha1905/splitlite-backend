@@ -88,6 +88,24 @@ private calculateBalances(expenses: any[]) {
 );
 }
 
+private async getGroupMembers(
+  groupId: string,
+) {
+  return this.prisma.groupMember.findMany({
+    where: {
+      groupId,
+    },
+
+    select: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+}
   async getBalances(
   userId: string,
   groupId: string,
@@ -105,9 +123,18 @@ private calculateBalances(expenses: any[]) {
   const balances =
     this.calculateBalances(expenses);
 
-  return Object.fromEntries(
-    balances,
-  );
+  const members =
+    await this.getGroupMembers(
+      groupId,
+    );
+
+  return members.map((member) => ({
+    userId: member.user.id,
+    name: member.user.name,
+    balance:
+      balances.get(member.user.id) || 0,
+  })).sort((a, b) =>
+      b.balance - a.balance,);
 }
 
   async getGroupSummary(userId: string, groupId: string) {
