@@ -88,6 +88,84 @@ private calculateBalances(expenses: any[]) {
 );
 }
 
+private simplifyDebts(
+  balances: Map<string, number>,
+) {
+  const creditors: {
+    userId: string;
+    amount: number;
+  }[] = [];
+
+  const debtors: {
+    userId: string;
+    amount: number;
+  }[] = [];
+
+  for (const [userId, balance] of balances) {
+    if (balance > 0) {
+      creditors.push({
+        userId,
+        amount: balance,
+      });
+    }
+
+    if (balance < 0) {
+      debtors.push({
+        userId,
+        amount: Math.abs(balance),
+      });
+    }
+  }
+
+  type SettlementSuggestion = {
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+};
+
+const settlements: SettlementSuggestion[] = [];
+
+  let creditorIndex = 0;
+  let debtorIndex = 0;
+
+  while (
+    creditorIndex < creditors.length &&
+    debtorIndex < debtors.length
+  ) {
+    const creditor =
+      creditors[creditorIndex];
+
+    const debtor =
+      debtors[debtorIndex];
+
+    const amount = Math.min(
+      creditor.amount,
+      debtor.amount,
+    );
+
+    settlements.push({
+      fromUserId: debtor.userId,
+      toUserId: creditor.userId,
+      amount: Number(
+        amount.toFixed(2),
+      ),
+    });
+
+    creditor.amount -= amount;
+    debtor.amount -= amount;
+
+    if (creditor.amount < 0.01) {
+      creditorIndex++;
+    }
+
+    if (debtor.amount < 0.01) {
+      debtorIndex++;
+    }
+  }
+
+  return settlements;
+}
+
 private async getGroupMembers(
   groupId: string,
 ) {
@@ -189,10 +267,16 @@ private async getGroupMembers(
     userId,
     groupId,
   );
-    return {
-      message:
-        'simplified balances endpoint',
+   const expenses =
+    await this.getGroupExpenseData(
       groupId,
-    };
+    );
+
+  const balances =
+    this.calculateBalances(expenses);
+
+  return this.simplifyDebts(
+    balances,
+  );
   }
 }
