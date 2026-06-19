@@ -1,6 +1,13 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+  type SettlementSuggestion = {
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+};
+
+
 @Injectable()
 export class BalancesService {
 
@@ -52,6 +59,14 @@ private async getGroupExpenseData(
     },
   });
 }
+private async getGroupBalances(
+  groupId: string,
+) {
+  const expenses =
+    await this.getGroupExpenseData(groupId);
+
+  return this.calculateBalances(expenses);
+}
 
 private calculateBalances(expenses: any[]) {
   const balances = new Map<string, number>();
@@ -79,12 +94,12 @@ private calculateBalances(expenses: any[]) {
   }
 
   return new Map(
-  [...balances.entries()].map(
-    ([userId, balance]) => [
-      userId,
-      Number(balance.toFixed(2)),
-    ],
-  ),
+  [...balances.entries()].map(([userId, balance]) => [
+    userId,
+    Math.abs(balance) < 0.01
+      ? 0
+      : Number(balance.toFixed(2)),
+  ]),
 );
 }
 
@@ -102,14 +117,14 @@ private simplifyDebts(
   }[] = [];
 
   for (const [userId, balance] of balances) {
-    if (balance > 0) {
+    if (balance >= 0.01) {
       creditors.push({
         userId,
         amount: balance,
       });
     }
 
-    if (balance < 0) {
+    if (balance <= -0.01) {
       debtors.push({
         userId,
         amount: Math.abs(balance),
@@ -117,11 +132,7 @@ private simplifyDebts(
     }
   }
 
-  type SettlementSuggestion = {
-  fromUserId: string;
-  toUserId: string;
-  amount: number;
-};
+  
 
 const settlements: SettlementSuggestion[] = [];
 
@@ -194,13 +205,8 @@ private async getGroupMembers(
     groupId,
   );
 
-  const expenses =
-    await this.getGroupExpenseData(
-      groupId,
-    );
-
-  const balances =
-    this.calculateBalances(expenses);
+const balances =
+  await this.getGroupBalances(groupId);
 
   const members =
     await this.getGroupMembers(
@@ -267,13 +273,8 @@ private async getGroupMembers(
     userId,
     groupId,
   );
-   const expenses =
-    await this.getGroupExpenseData(
-      groupId,
-    );
-
   const balances =
-    this.calculateBalances(expenses);
+  await this.getGroupBalances(groupId);
 
   return this.simplifyDebts(
     balances,
