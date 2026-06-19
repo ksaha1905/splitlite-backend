@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSettlementDto } from './dto/create-settlement.dto';
+import { GetSettlementsQueryDto } from './dto/get-settlements-query.dto';
 
 @Injectable()
 export class SettlementsService {
@@ -91,5 +92,82 @@ export class SettlementsService {
       },
     },
   });
+}
+
+async getGroupSettlements(
+  userId: string,
+  groupId: string,
+  query: GetSettlementsQueryDto,
+) {
+const membership =
+  await this.prisma.groupMember.findUnique({
+    where: {
+      userId_groupId: {
+        userId,
+        groupId,
+      },
+    },
+  });
+
+if (!membership) {
+  throw new ForbiddenException(
+    'You are not a member of this group',
+  );
+}
+const page = query.page || 1;
+const limit = query.limit || 10;
+
+const skip = (page - 1) * limit;
+const [settlements, total] =
+  await this.prisma.$transaction([
+    this.prisma.settlement.findMany({
+      where: {
+        groupId,
+      },
+
+      skip,
+      take: limit,
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      select: {
+        id: true,
+        amount: true,
+        createdAt: true,
+
+        paidBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        receivedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    }),
+
+    this.prisma.settlement.count({
+      where: {
+        groupId,
+      },
+    }),
+  ]);
+  return {
+  data: settlements,
+
+  meta: {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  },
+};
 }
 }
