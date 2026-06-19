@@ -24,6 +24,9 @@ model User {
   paidExpenses        Expense[]            @relation("PaidExpenses")
   expenseParticipants ExpenseParticipant[] @relation("ExpenseParticipants")
 
+  settlementsPaid     Settlement[] @relation("SettlementPayments")
+settlementsReceived Settlement[] @relation("SettlementReceipts")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -38,6 +41,7 @@ model Group {
 
   members  GroupMember[]
   expenses Expense[]
+  settlements Settlement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,6 +102,29 @@ model ExpenseParticipant {
 
    @@index([expenseId])
   @@index([userId])
+}
+
+model Settlement {
+  id String @id @default(uuid())
+
+  groupId String
+
+  paidById String
+  receivedById String
+
+  amount Decimal @db.Decimal(10,2)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  paidBy User @relation("SettlementPayments", fields: [paidById], references: [id])
+
+  receivedBy User @relation("SettlementReceipts", fields: [receivedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([groupId, createdAt])
+  @@index([paidById])
+  @@index([receivedById])
 }
 
 enum GroupRole {
