@@ -1,17 +1,24 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { SettlementsService } from './settlements.service';
 import { CreateSettlementDto } from './dto/create-settlement.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuthGuard } from '../../common/guards/auth.guard';
 
+@UseGuards(AuthGuard)
 @Controller('settlements')
 export class SettlementsController {
     constructor(
     private readonly settlementsService: SettlementsService,
   ) {}
 
-  @Post()
+@Post()
 createSettlement(
+  @CurrentUser() user: any,
   @Body() dto: CreateSettlementDto,
 ) {
-  return dto;
+  return this.settlementsService.createSettlement(
+    user.id,
+    dto,
+  );
 }
 }
