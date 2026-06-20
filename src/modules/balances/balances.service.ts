@@ -59,16 +59,39 @@ private async getGroupExpenseData(
     },
   });
 }
+private async getGroupSettlementData(
+  groupId: string,
+) {
+  return this.prisma.settlement.findMany({
+    where: {
+      groupId,
+    },
+
+    select: {
+      paidById: true,
+      receivedById: true,
+      amount: true,
+    },
+  });
+}
 private async getGroupBalances(
   groupId: string,
 ) {
-  const expenses =
-    await this.getGroupExpenseData(groupId);
+  const [
+    expenses,
+    settlements,
+  ] = await Promise.all([
+    this.getGroupExpenseData(groupId),
+    this.getGroupSettlementData(groupId),
+  ]);
 
-  return this.calculateBalances(expenses);
+  return this.calculateBalances(
+    expenses,
+    settlements,
+  );
 }
 
-private calculateBalances(expenses: any[]) {
+private calculateBalances(expenses: any[], settlements: any[],) {
   const balances = new Map<string, number>();
 
   for (const expense of expenses) {
@@ -92,7 +115,25 @@ private calculateBalances(expenses: any[]) {
       );
     }
   }
+for (const settlement of settlements) {
+  const amount = Number(
+    settlement.amount,
+  );
 
+  balances.set(
+    settlement.paidById,
+    (balances.get(
+      settlement.paidById,
+    ) || 0) + amount,
+  );
+
+  balances.set(
+    settlement.receivedById,
+    (balances.get(
+      settlement.receivedById,
+    ) || 0) - amount,
+  );
+}
   return new Map(
   [...balances.entries()].map(([userId, balance]) => [
     userId,
