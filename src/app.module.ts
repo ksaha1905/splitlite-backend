@@ -7,6 +7,7 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { BalancesModule } from './modules/balances/balances.module';
 import { SettlementsModule } from './modules/settlements/settlements.module';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { SettlementsModule } from './modules/settlements/settlements.module';
     GroupsModule,
     ExpensesModule,
     BalancesModule,
-    SettlementsModule
+    SettlementsModule,
+    ActivityLogsModule
   ],
   controllers: [],
   providers: [],
