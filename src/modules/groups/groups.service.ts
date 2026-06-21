@@ -7,10 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { ActivityAction } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,  private activityLogsService: ActivityLogsService,) {}
 
   private async checkGroupOwnership(userId: string, groupId: string) {
     const membership = await this.prisma.groupMember.findUnique({
@@ -146,13 +148,23 @@ export class GroupsService {
       throw new ConflictException('Already a member');
     }
 
-    return this.prisma.groupMember.create({
-      data: {
-        userId,
-        groupId: group.id,
-        role: 'MEMBER',
-      },
-    });
+    const membership =
+  await this.prisma.groupMember.create({
+    data: {
+      userId,
+      groupId: group.id,
+      role: 'MEMBER',
+    },
+  });
+
+await this.activityLogsService.createLog(
+  group.id,
+  userId,
+  ActivityAction.MEMBER_JOINED,
+  'Joined the group',
+);
+
+return membership;
   }
 
   async getMembers(groupId: string) {
@@ -217,13 +229,20 @@ export class GroupsService {
 }
 
   await this.prisma.groupMember.delete({
-    where: {
-      userId_groupId: {
-        userId,
-        groupId,
-      },
+  where: {
+    userId_groupId: {
+      userId,
+      groupId,
     },
-  });
+  },
+});
+
+await this.activityLogsService.createLog(
+  groupId,
+  userId,
+  ActivityAction.MEMBER_LEFT,
+  'Left the group',
+);
 
   return {
     message: 'Left group successfully',
