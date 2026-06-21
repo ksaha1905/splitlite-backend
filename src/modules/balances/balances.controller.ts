@@ -6,28 +6,16 @@ import { AuthGuard } from '../../common/guards/auth.guard';
 @Controller('groups/:groupId')
 @UseGuards(AuthGuard)
 export class BalancesController {
-  constructor(
-    private readonly balancesService: BalancesService,
-  ) {}
+  constructor(private readonly balancesService: BalancesService) {}
 
   @Get('balances')
-  getBalances(
-    @CurrentUser() user: any,
-    @Param('groupId') groupId: string,
-  ) {
-    return this.balancesService.getBalances(
-      user.id, groupId,
-    );
+  getBalances(@CurrentUser() user: any, @Param('groupId') groupId: string) {
+    return this.balancesService.getBalances(user.id, groupId);
   }
 
   @Get('summary')
-  getGroupSummary(
-    @CurrentUser() user: any,
-    @Param('groupId') groupId: string,
-  ) {
-    return this.balancesService.getGroupSummary(
-      user.id, groupId,
-    );
+  getGroupSummary(@CurrentUser() user: any, @Param('groupId') groupId: string) {
+    return this.balancesService.getGroupSummary(user.id, groupId);
   }
 
   @Get('simplified-balances')
@@ -35,8 +23,6 @@ export class BalancesController {
     @CurrentUser() user: any,
     @Param('groupId') groupId: string,
   ) {
-    return this.balancesService.getSimplifiedBalances(
-      user.id, groupId,
-    );
+    return this.balancesService.getSimplifiedBalances(user.id, groupId);
   }
 }

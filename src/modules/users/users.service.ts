@@ -14,36 +14,27 @@ export class UsersService {
     });
   }
 
-  async createUser(data: {
-    supabaseId: string;
-    email: string;
-  }) {
+  async createUser(data: { supabaseId: string; email: string }) {
     return this.prisma.user.create({
       data,
     });
   }
 
-async getProfile(userId: string) {
-  const user =
-    await this.prisma.user.findUnique({
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
       where: {
         id: userId,
       },
     });
 
-  if (!user) {
-    throw new NotFoundException(
-      'User not found',
-    );
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 
-  return user;
-}
-
-  async updateProfile(
-    userId: string,
-    dto: UpdateUserDto,
-  ) {
+  async updateProfile(userId: string, dto: UpdateUserDto) {
     return this.prisma.user.update({
       where: {
         id: userId,

@@ -6,7 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
-  Delete
+  Delete,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -40,33 +40,17 @@ export class GroupsController {
   }
 
   @Post('join')
-joinGroup(
-  @CurrentUser() user: any,
-  @Body() dto: JoinGroupDto,
-) {
-  return this.groupsService.joinGroup(
-    user.id,
-    dto,
-  );
-}
+  joinGroup(@CurrentUser() user: any, @Body() dto: JoinGroupDto) {
+    return this.groupsService.joinGroup(user.id, dto);
+  }
 
-@Get(':id/members')
-getMembers(
-  @Param('id') groupId: string,
-) {
-  return this.groupsService.getMembers(
-    groupId,
-  );
-}
+  @Get(':id/members')
+  getMembers(@Param('id') groupId: string) {
+    return this.groupsService.getMembers(groupId);
+  }
 
-@Delete(':id/leave')
-leaveGroup(
-  @CurrentUser() user: any,
-  @Param('id') groupId: string,
-) {
-  return this.groupsService.leaveGroup(
-    user.id,
-    groupId,
-  );
-}
+  @Delete(':id/leave')
+  leaveGroup(@CurrentUser() user: any, @Param('id') groupId: string) {
+    return this.groupsService.leaveGroup(user.id, groupId);
+  }
 }

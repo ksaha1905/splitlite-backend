@@ -387,25 +387,17 @@ export class ExpensesService {
   }
 
   async updateExpense(
-  userId: string,
-  expenseId: string,
-  dto: UpdateExpenseDto,
-) {
-  await this.validateExpenseEditPermission(
-    userId,
-    expenseId,
-  );
+    userId: string,
+    expenseId: string,
+    dto: UpdateExpenseDto,
+  ) {
+    await this.validateExpenseEditPermission(userId, expenseId);
 
-  await this.validateExpenseCreation(
-    userId,
-    dto,
-  );
+    await this.validateExpenseCreation(userId, dto);
 
-  const participantData =
-    this.buildParticipantData(dto);
+    const participantData = this.buildParticipantData(dto);
 
-  const expense = await this.prisma.$transaction(
-    async (tx) => {
+    const expense = await this.prisma.$transaction(async (tx) => {
       await tx.expenseParticipant.deleteMany({
         where: {
           expenseId,
@@ -438,53 +430,46 @@ export class ExpensesService {
           updatedAt: true,
         },
       });
-    },
-  );
+    });
 
-  await this.activityLogsService.createLog(
-    expense.groupId,
-    userId,
-    ActivityAction.EXPENSE_UPDATED,
-    `Updated expense "${expense.title}"`,
-  );
+    await this.activityLogsService.createLog(
+      expense.groupId,
+      userId,
+      ActivityAction.EXPENSE_UPDATED,
+      `Updated expense "${expense.title}"`,
+    );
 
-  return expense;
-}
+    return expense;
+  }
 
-  async deleteExpense(
-  userId: string,
-  expenseId: string,
-) {
-  await this.validateExpenseEditPermission(
-    userId,
-    expenseId,
-  );
+  async deleteExpense(userId: string, expenseId: string) {
+    await this.validateExpenseEditPermission(userId, expenseId);
 
-  const expense = await this.prisma.expense.findUnique({
-    where: {
-      id: expenseId,
-    },
-    select: {
-      title: true,
-      groupId: true,
-    },
-  });
+    const expense = await this.prisma.expense.findUnique({
+      where: {
+        id: expenseId,
+      },
+      select: {
+        title: true,
+        groupId: true,
+      },
+    });
 
-  await this.prisma.expense.delete({
-    where: {
-      id: expenseId,
-    },
-  });
+    await this.prisma.expense.delete({
+      where: {
+        id: expenseId,
+      },
+    });
 
-  await this.activityLogsService.createLog(
-    expense!.groupId,
-    userId,
-    ActivityAction.EXPENSE_DELETED,
-    `Deleted expense "${expense!.title}"`,
-  );
+    await this.activityLogsService.createLog(
+      expense!.groupId,
+      userId,
+      ActivityAction.EXPENSE_DELETED,
+      `Deleted expense "${expense!.title}"`,
+    );
 
-  return {
-    message: 'Expense deleted successfully',
-  };
-}
+    return {
+      message: 'Expense deleted successfully',
+    };
+  }
 }

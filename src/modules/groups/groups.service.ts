@@ -12,7 +12,10 @@ import { ActivityAction } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
-  constructor(private prisma: PrismaService,  private activityLogsService: ActivityLogsService,) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityLogsService: ActivityLogsService,
+  ) {}
 
   private async checkGroupOwnership(userId: string, groupId: string) {
     const membership = await this.prisma.groupMember.findUnique({
@@ -148,23 +151,22 @@ export class GroupsService {
       throw new ConflictException('Already a member');
     }
 
-    const membership =
-  await this.prisma.groupMember.create({
-    data: {
+    const membership = await this.prisma.groupMember.create({
+      data: {
+        userId,
+        groupId: group.id,
+        role: 'MEMBER',
+      },
+    });
+
+    await this.activityLogsService.createLog(
+      group.id,
       userId,
-      groupId: group.id,
-      role: 'MEMBER',
-    },
-  });
+      ActivityAction.MEMBER_JOINED,
+      'Joined the group',
+    );
 
-await this.activityLogsService.createLog(
-  group.id,
-  userId,
-  ActivityAction.MEMBER_JOINED,
-  'Joined the group',
-);
-
-return membership;
+    return membership;
   }
 
   async getMembers(groupId: string) {
@@ -195,12 +197,8 @@ return membership;
     });
   }
 
-  async leaveGroup(
-  userId: string,
-  groupId: string,
-) {
-  const membership =
-    await this.prisma.groupMember.findUnique({
+  async leaveGroup(userId: string, groupId: string) {
+    const membership = await this.prisma.groupMember.findUnique({
       where: {
         userId_groupId: {
           userId,
@@ -209,43 +207,40 @@ return membership;
       },
     });
 
-  if (!membership) {
-    throw new NotFoundException(
-      'You are not a member of this group',
-    );
-  }
+    if (!membership) {
+      throw new NotFoundException('You are not a member of this group');
+    }
 
- if (membership.role === 'OWNER') {
-  await this.prisma.group.delete({
-    where: {
-      id: groupId,
-    },
-  });
+    if (membership.role === 'OWNER') {
+      await this.prisma.group.delete({
+        where: {
+          id: groupId,
+        },
+      });
 
-  return {
-    message:
-      'Group deleted successfully',
-  };
-}
+      return {
+        message: 'Group deleted successfully',
+      };
+    }
 
-  await this.prisma.groupMember.delete({
-  where: {
-    userId_groupId: {
-      userId,
+    await this.prisma.groupMember.delete({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId,
+        },
+      },
+    });
+
+    await this.activityLogsService.createLog(
       groupId,
-    },
-  },
-});
+      userId,
+      ActivityAction.MEMBER_LEFT,
+      'Left the group',
+    );
 
-await this.activityLogsService.createLog(
-  groupId,
-  userId,
-  ActivityAction.MEMBER_LEFT,
-  'Left the group',
-);
-
-  return {
-    message: 'Left group successfully',
-  };
-}
+    return {
+      message: 'Left group successfully',
+    };
+  }
 }

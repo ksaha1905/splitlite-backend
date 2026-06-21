@@ -10,7 +10,10 @@ import { ActivityAction } from '@prisma/client';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 @Injectable()
 export class SettlementsService {
-  constructor(private prisma: PrismaService, private activityLogsService: ActivityLogsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityLogsService: ActivityLogsService,
+  ) {}
 
   private async validateSettlementCreation(
     userId: string,
@@ -54,17 +57,10 @@ export class SettlementsService {
     }
   }
 
- async createSettlement(
-  userId: string,
-  dto: CreateSettlementDto,
-) {
-  await this.validateSettlementCreation(
-    userId,
-    dto,
-  );
+  async createSettlement(userId: string, dto: CreateSettlementDto) {
+    await this.validateSettlementCreation(userId, dto);
 
-  const settlement =
-    await this.prisma.settlement.create({
+    const settlement = await this.prisma.settlement.create({
       data: {
         groupId: dto.groupId,
         paidById: dto.paidById,
@@ -95,90 +91,86 @@ export class SettlementsService {
       },
     });
 
-  await this.activityLogsService.createLog(
-    settlement.groupId,
-    userId,
-    ActivityAction.SETTLEMENT_CREATED,
-    `Created settlement of ₹${settlement.amount}`,
-  );
+    await this.activityLogsService.createLog(
+      settlement.groupId,
+      userId,
+      ActivityAction.SETTLEMENT_CREATED,
+      `Created settlement of ₹${settlement.amount}`,
+    );
 
-  return settlement;
-}
+    return settlement;
+  }
 
-async getGroupSettlements(
-  userId: string,
-  groupId: string,
-  query: GetSettlementsQueryDto,
-) {
-const membership =
-  await this.prisma.groupMember.findUnique({
-    where: {
-      userId_groupId: {
-        userId,
-        groupId,
-      },
-    },
-  });
-
-if (!membership) {
-  throw new ForbiddenException(
-    'You are not a member of this group',
-  );
-}
-const page = query.page || 1;
-const limit = query.limit || 10;
-
-const skip = (page - 1) * limit;
-const [settlements, total] =
-  await this.prisma.$transaction([
-    this.prisma.settlement.findMany({
+  async getGroupSettlements(
+    userId: string,
+    groupId: string,
+    query: GetSettlementsQueryDto,
+  ) {
+    const membership = await this.prisma.groupMember.findUnique({
       where: {
-        groupId,
-      },
-
-      skip,
-      take: limit,
-
-      orderBy: {
-        createdAt: 'desc',
-      },
-
-      select: {
-        id: true,
-        amount: true,
-        createdAt: true,
-
-        paidBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-
-        receivedBy: {
-          select: {
-            id: true,
-            name: true,
-          },
+        userId_groupId: {
+          userId,
+          groupId,
         },
       },
-    }),
+    });
 
-    this.prisma.settlement.count({
-      where: {
-        groupId,
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    const skip = (page - 1) * limit;
+    const [settlements, total] = await this.prisma.$transaction([
+      this.prisma.settlement.findMany({
+        where: {
+          groupId,
+        },
+
+        skip,
+        take: limit,
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+
+        select: {
+          id: true,
+          amount: true,
+          createdAt: true,
+
+          paidBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+
+          receivedBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.settlement.count({
+        where: {
+          groupId,
+        },
+      }),
+    ]);
+    return {
+      data: settlements,
+
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-    }),
-  ]);
-  return {
-  data: settlements,
-
-  meta: {
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit),
-  },
-};
-}
+    };
+  }
 }
