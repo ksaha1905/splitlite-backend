@@ -6,10 +6,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSettlementDto } from './dto/create-settlement.dto';
 import { GetSettlementsQueryDto } from './dto/get-settlements-query.dto';
-
+import { ActivityAction } from '@prisma/client';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 @Injectable()
 export class SettlementsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private activityLogsService: ActivityLogsService) {}
 
   private async validateSettlementCreation(
     userId: string,
@@ -53,7 +54,7 @@ export class SettlementsService {
     }
   }
 
-  async createSettlement(
+ async createSettlement(
   userId: string,
   dto: CreateSettlementDto,
 ) {
@@ -62,36 +63,46 @@ export class SettlementsService {
     dto,
   );
 
-  return this.prisma.settlement.create({
-    data: {
-      groupId: dto.groupId,
-      paidById: dto.paidById,
-      receivedById: dto.receivedById,
-      amount: dto.amount,
-    },
-
-    select: {
-      id: true,
-      amount: true,
-      createdAt: true,
-
-      groupId: true,
-
-      paidBy: {
-        select: {
-          id: true,
-          name: true,
-        },
+  const settlement =
+    await this.prisma.settlement.create({
+      data: {
+        groupId: dto.groupId,
+        paidById: dto.paidById,
+        receivedById: dto.receivedById,
+        amount: dto.amount,
       },
 
-      receivedBy: {
-        select: {
-          id: true,
-          name: true,
+      select: {
+        id: true,
+        amount: true,
+        createdAt: true,
+
+        groupId: true,
+
+        paidBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        receivedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
+
+  await this.activityLogsService.createLog(
+    settlement.groupId,
+    userId,
+    ActivityAction.SETTLEMENT_CREATED,
+    `Created settlement of ₹${settlement.amount}`,
+  );
+
+  return settlement;
 }
 
 async getGroupSettlements(
